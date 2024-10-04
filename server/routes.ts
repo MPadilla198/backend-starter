@@ -84,14 +84,14 @@ class Routes {
     } else {
       posts = await Posting.getPosts();
     }
-    return Responses.posts(posts);
+    // return Responses.posts(posts);
   }
 
   @Router.post("/posts")
   async createPost(session: SessionDoc, content: string, options?: PostOptions) {
     const user = Sessioning.getUser(session);
-    const created = await Posting.create(user, content, options);
-    return { msg: created.msg, post: await Responses.post(created.post) };
+    // const created = await Posting.create(user, content, options);
+    // return { msg: created.msg, post: await Responses.post(created.post) };
   }
 
   @Router.patch("/posts/:id")
@@ -107,7 +107,7 @@ class Routes {
     const user = Sessioning.getUser(session);
     const oid = new ObjectId(id);
     await Posting.assertAuthorIsUser(oid, user);
-    return Posting.delete(oid);
+    // return Posting.delete(oid);
   }
 
   /*****
@@ -172,17 +172,17 @@ class Routes {
 
   @Router.put("/source/unregister/:id")
   async unregisterSource(session: SessionDoc, id: string) {
-    
+
   }
 
   @Router.put("/source/lookup/:id")
   async lookupSource(session: SessionDoc, id: string) {
-    
+
   }
 
   @Router.put("/source/get/:id")
   async GetSource(session: SessionDoc, id: string) {
-    
+
   }
 
   /*****
@@ -191,32 +191,32 @@ class Routes {
 
   @Router.put("/label/register/:label")
   async registerLabel(session: SessionDoc, label: string) {
-    
+
   }
 
   @Router.put("/label/unregister/:label")
   async unregisterLabel(session: SessionDoc, label: string) {
-    
+
   }
 
   @Router.put("/label/lookup/:label")
   async lookupLabel(session: SessionDoc, label: string) {
-    
+
   }
 
   @Router.put("/label/:label/add/:id")
   async addLabel(session: SessionDoc, label: string, id: string) {
-    
+
   }
 
   @Router.put("/label/:label/remove/:id")
   async removeLabel(session: SessionDoc, label: string, id: string) {
-    
+
   }
 
   @Router.put("/label/get/:id")
   async getResourceLabel(session: SessionDoc, id: string) {
-    
+
   }
 
   /*****
@@ -225,12 +225,12 @@ class Routes {
 
   @Router.put("/template/add/:id")
   async addTemplate(session: SessionDoc, id: string) {
-    
+
   }
 
   @Router.put("/template/remove/:id")
   async removeTemplate(session: SessionDoc, id: string) {
-    
+
   }
 }
 
