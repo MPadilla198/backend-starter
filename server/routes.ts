@@ -70,6 +70,10 @@ class Routes {
     return { msg: "Logged out!" };
   }
 
+  /*****
+   * Posting
+   */
+
   @Router.get("/posts")
   @Router.validate(z.object({ author: z.string().optional() }))
   async getPosts(author?: string) {
@@ -105,6 +109,10 @@ class Routes {
     await Posting.assertAuthorIsUser(oid, user);
     return Posting.delete(oid);
   }
+
+  /*****
+   * Friending
+   */
 
   @Router.get("/friends")
   async getFriends(session: SessionDoc) {
@@ -151,6 +159,78 @@ class Routes {
     const user = Sessioning.getUser(session);
     const fromOid = (await Authing.getUserByUsername(from))._id;
     return await Friending.rejectRequest(fromOid, user);
+  }
+
+  /*****
+   * Sourcing
+   */
+
+  @Router.put("/source/register/:target")
+  async registerSource(session: SessionDoc, target: string) {
+
+  }
+
+  @Router.put("/source/unregister/:id")
+  async unregisterSource(session: SessionDoc, id: string) {
+    
+  }
+
+  @Router.put("/source/lookup/:id")
+  async lookupSource(session: SessionDoc, id: string) {
+    
+  }
+
+  @Router.put("/source/get/:id")
+  async GetSource(session: SessionDoc, id: string) {
+    
+  }
+
+  /*****
+   * Labelling
+   */
+
+  @Router.put("/label/register/:label")
+  async registerLabel(session: SessionDoc, label: string) {
+    
+  }
+
+  @Router.put("/label/unregister/:label")
+  async unregisterLabel(session: SessionDoc, label: string) {
+    
+  }
+
+  @Router.put("/label/lookup/:label")
+  async lookupLabel(session: SessionDoc, label: string) {
+    
+  }
+
+  @Router.put("/label/:label/add/:id")
+  async addLabel(session: SessionDoc, label: string, id: string) {
+    
+  }
+
+  @Router.put("/label/:label/remove/:id")
+  async removeLabel(session: SessionDoc, label: string, id: string) {
+    
+  }
+
+  @Router.put("/label/get/:id")
+  async getResourceLabel(session: SessionDoc, id: string) {
+    
+  }
+
+  /*****
+   * Templating
+   */
+
+  @Router.put("/template/add/:id")
+  async addTemplate(session: SessionDoc, id: string) {
+    
+  }
+
+  @Router.put("/template/remove/:id")
+  async removeTemplate(session: SessionDoc, id: string) {
+    
   }
 }
 

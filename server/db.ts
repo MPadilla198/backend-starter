@@ -1,5 +1,7 @@
 import { MongoClient, ServerApiVersion } from "mongodb";
 
+// YOU SHOULD NOT NEED TO EDIT THIS FILE.
+
 const mongoUri = process.env.MONGO_SRV;
 if (!mongoUri) {
   throw new Error("Please add the MongoDB connection SRV as 'MONGO_SRV'");
