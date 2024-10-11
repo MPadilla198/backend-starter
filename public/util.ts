@@ -1,3 +1,4 @@
+
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 type InputTag = "input" | "textarea" | "json";
 type Field = InputTag | { [key: string]: Field };
@@ -79,6 +80,13 @@ const operations: Operation[] = [
     endpoint: "/api/posts/:id",
     method: "DELETE",
     fields: { id: "input" },
+  },
+
+  {
+    name: "Post Source",
+    endpoint: "/source/:target",
+    method: "POST",
+    fields: { target: "input", uri: "input" },
   },
   //
   // ...

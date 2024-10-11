@@ -1,6 +1,7 @@
-import { ObjectId } from "mongodb";
+import { Filter, ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
-import { NotAllowedError, NotFoundError } from "./errors";
+import { NotAllowedError, NotFoundError, NotImplementedError } from "./errors";
+import { SourceTarget } from "./types";
 
 
 export interface SourcingOptions {
@@ -8,8 +9,9 @@ export interface SourcingOptions {
 }
 
 export interface SourceDoc extends BaseDoc {
-    id: ObjectId;
-    target: ObjectId;
+    user: ObjectId;
+    path_uri: string;
+    target: SourceTarget;
     contentIDs: Set<ObjectId>;
     options?: SourcingOptions;
 }
@@ -34,55 +36,128 @@ export default class SourcingConcept {
         this.content = new DocCollection<ContentDoc>(collectionName);
     }
 
-    async register(target: ObjectId) {
-        return "";
+    async register(target: SourceTarget, uri: string, user: ObjectId): Promise<ObjectId> {
+        // id not in sourceIDs
+        // sourceIDs += id
+        // id.source := t
+        await this.assertSourceDoesNotExist({ target, uri, user })
+        const source = await this.sources.createOne(
+            {
+                target: target,
+                path_uri: uri,
+                user: user,
+                contentIDs: new Set<ObjectId>()
+            })
+        return source;
     }
 
-    async unregister(sourceID: ObjectId) {
-
+    async unregister(sourceID: ObjectId): Promise<void> {
+        // id in sourceIDs
+        // sourceIDs -= id
+        // id.source := none
+        // id.content.data := none
+        // id.content := none
+        await this.assertSourceExists(sourceID)
+        await this.sources.deleteOne(sourceID)
     }
 
-    async lookup(sourceID: ObjectId) {
-        return null;
+    async lookup(sourceID: ObjectId): Promise<SourceDoc> {
+        // id in sourceIDs
+        // t := id.sources
+        // await this.assertSourceExists(sourceID) // When uncommented, the linter does not recognize the assert
+        const result = await this.sources.readOne(sourceID)
+        if (result == null) {
+            throw new SourceNotAllowedError(sourceID)
+        }
+        return result
     }
 
-    async get(contentID: ObjectId) {
-        return null;
+    async get(contentID: ObjectId): Promise<ContentDoc> {
+        // id in contentIDs
+        // t := id.content
+
+        // await this.assertContentExists(contentID) // When uncommented, the linter does not recognize the assert
+        const result = await this.content.readOne(contentID)
+        if (result == null) {
+            throw new SourceNotAllowedError(contentID)
+        }
+        return result
     }
 
     async update(sourceID: ObjectId) {
-        return null;
+        // id in sourceIDs
+        // contentID not in contentIDs
+        // id.content += contentID
+        // contentID.data := Get(id.source)
+        await this.assertSourceExists(sourceID)
+        const source = await this.sources.readOne(sourceID)
+        const newContent = SourcingConcept.Get(source?.target, source?.path_uri);
+        for (let id of newContent.values()) {
+            throw new NotImplementedError(); // todo
+        }
+    }
+
+    private static Get(target: SourceTarget | undefined, uri: string | undefined): Set<ContentDoc> {
+        throw new NotImplementedError(); // TODO
+    }
+
+    private async assertSourceExists(filter: Filter<SourceDoc>) {
+        const result = await this.sources.readOne(filter)
+        if (result == null) {
+            throw new SourceNotAllowedError(filter)
+        }
+    }
+
+    private async assertSourceDoesNotExist(filter: Filter<SourceDoc>) {
+        const result = await this.sources.readOne(filter)
+        if (result != null) {
+            throw new SourceNotFoundError(filter)
+        }
+    }
+
+    private async assertContentExists(filter: Filter<ContentDoc>) {
+        const result = await this.content.readOne(filter)
+        if (result == null) {
+            throw new ContentNotAllowedError(filter)
+        }
+    }
+
+    private async assertContentDoesNotExist(filter: Filter<ContentDoc>) {
+        const result = await this.content.readOne(filter)
+        if (result != null) {
+            throw new ContentNotFoundError(filter)
+        }
     }
 }
 
 export class SourceNotFoundError extends NotFoundError {
     constructor(
-        public readonly _id: ObjectId,
+        public readonly _filter: Filter<SourceDoc>,
     ) {
-        super("{0} is not found!", _id); // TODO
+        super("{0}: Source with filter {1} is not found!", NotFoundError.HTTP_CODE, _filter);
     }
 }
 
 export class SourceNotAllowedError extends NotAllowedError {
     constructor(
-        public readonly _id: ObjectId,
+        public readonly _filter: Filter<SourceDoc>,
     ) {
-        super("{0} is not allowed!", _id);// TODO
+        super("{0}: Source with filter {1} is not allowed, as it already exists!", NotFoundError.HTTP_CODE, _filter);
     }
 }
 
 export class ContentNotFoundError extends NotFoundError {
     constructor(
-        public readonly _id: ObjectId,
+        public readonly _filter: Filter<ContentDoc>,
     ) {
-        super("{0} is not found!", _id); // TODO
+        super("{0}: Content with filter {1} is not found!", NotFoundError.HTTP_CODE, _filter);
     }
 }
 
 export class ContentNotAllowedError extends NotAllowedError {
     constructor(
-        public readonly _id: ObjectId,
+        public readonly _filter: Filter<ContentDoc>,
     ) {
-        super("{0} is not allowed!", _id);// TODO
+        super("{0}: Content with filter {1} is not allowed, as it already exists!", NotFoundError.HTTP_CODE, _filter);
     }
 }

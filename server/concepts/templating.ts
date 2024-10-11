@@ -1,19 +1,30 @@
 import { ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
-import { NotAllowedError, NotFoundError } from "./errors";
+import { NotAllowedError, NotFoundError, NotImplementedError } from "./errors";
 
+export enum TemplateType {
+    Markdown
+}
+
+export enum ResourceType {
+    Text,
+    Image
+}
 
 export interface TemplatingOptions {
 
 }
 
 export interface TemplateDoc extends BaseDoc {
-    template: ObjectId;
+    type: TemplateType;
+    resources: Set<ResourceType>;
+    template: any;
+    options?: TemplatingOptions;
 }
 
 export interface RenderDoc extends BaseDoc {
     template: ObjectId;
-    data: ObjectId;
+    data: Map<string, ObjectId>;
 }
 
 /**
@@ -31,30 +42,53 @@ export default class TemplatingConcept {
         this.renders = new DocCollection<RenderDoc>(collectionName);
     }
 
-    async add(template: ObjectId) {
-        await this.templates.createOne({ template });
-        return { msg: "Template added" };
+    async add(template: any, type: TemplateType, resources: Set<ResourceType>): Promise<ObjectId> {
+        // id not in templateIDs
+        // templateIDs += id
+        // id.templates := t
+        const _id = await this.templates.createOne({ type, resources, template });
+        return _id;
     }
 
-    async remove(template: ObjectId) {
-        const request = await this.templates.popOne({ template });
+    async remove(template: ObjectId): Promise<void> {
+        // id in templateIDs
+        // id.templates := none
+        // templateIDs -= id
+        const request = await this.templates.readOne(template);
         if (request == null) {
             throw new TemplateNotFoundError(template);
         }
-        return request;
+        await this.templates.deleteOne(template);
     }
 
-    async render(template: ObjectId, data: ObjectId) {
-        await this.renders.createOne({ template, data });
-        return { msg: "render created from template" };
+    async render(template: ObjectId, data: Map<string, ObjectId>): Promise<ObjectId> {
+        // id in templateIDs
+        // r not in renderIDs
+        // renderIDs += r
+        // r.renders := Render(id.templates, d)
+        this.assertTemplateExists(template)
+        return this.Render(template, data);
     }
 
-    async getRender(render: ObjectId) {
-        const request = await this.renders.popOne({ render });
+    async getRender(render: ObjectId): Promise<any> {
+        // id in renderIDs
+        // r := id.renders
+        const request = await this.renders.readOne(render);
         if (request === null) {
             throw new RenderNotFoundError(render);
         }
-        return request;
+        return request
+    }
+
+    private async Render(template: ObjectId, data: Map<string, ObjectId>): Promise<ObjectId> {
+        throw new NotImplementedError() // todo
+    }
+
+    private async assertTemplateExists(template: ObjectId): Promise<void> {
+        const result = await this.templates.readOne(template)
+        if (result == null) {
+            throw new TemplateNotFoundError(template)
+        }
     }
 }
 
@@ -62,7 +96,7 @@ export class TemplateNotFoundError extends NotFoundError {
     constructor(
         public readonly _id: ObjectId,
     ) {
-        super("template of ID {0} not found!", _id);
+        super("{0}: Template of ID {1} not found!", NotFoundError.HTTP_CODE, _id);
     }
 }
 
@@ -70,7 +104,7 @@ export class RenderNotAllowedError extends NotAllowedError {
     constructor(
         public readonly _id: ObjectId,
     ) {
-        super("render of ID {0} is not allowed!", _id);
+        super("{0}: Render of ID {1} is not allowed!", NotFoundError.HTTP_CODE, _id);
     }
 }
 
@@ -78,6 +112,6 @@ export class RenderNotFoundError extends NotFoundError {
     constructor(
         public readonly _id: ObjectId,
     ) {
-        super("render of ID {0} not found!", _id);
+        super("{0}: Render of ID {1} not found!", NotFoundError.HTTP_CODE, _id);
     }
 }

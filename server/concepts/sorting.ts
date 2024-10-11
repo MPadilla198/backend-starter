@@ -1,14 +1,15 @@
 import { ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
-import { NotFoundError } from "./errors";
-
+import { NotAllowedError, NotFoundError, NotImplementedError } from "./errors";
+import { Label } from "./types";
 
 export interface SortingOptions {
 
 }
 
 export interface SortDoc extends BaseDoc {
-    weights: Map<string, number>;
+    weights: Map<Label, number>;
+    options?: SortingOptions;
 }
 
 /**
@@ -24,40 +25,107 @@ export default class SortingConcept {
         this.sorts = new DocCollection<SortDoc>(collectionName);
     }
 
-    async sort(feed: ObjectId) {
-        return [];
+    async sort(sortId: ObjectId, feed: Set<ObjectId>): Promise<Array<ObjectId>> {
+        const sort = await this.sorts.readOne(sortId)
+        if (sort == null) {
+            throw new SortNotFoundError(sortId)
+        }
+        return SortingConcept.Sort(sort, feed)
     }
 
-    async add(label: string, weight: number) {
-
+    async add(sortId: ObjectId, label: Label, weight: number): Promise<void> {
+        // system add(label: String, w: float)
+        //     label not in labelIDs
+        //     labelIDs += label
+        //     label.weights := w
+        const sort = await this.sorts.readOne(sortId)
+        if (sort == null) {
+            throw new SortNotFoundError(sortId)
+        }
+        if (sort.weights.has(label)) {
+            throw new LabelNotAllowedError(label)
+        }
+        await this.sorts.partialUpdateOne(sortId, { weights: sort.weights.set(label, weight) })
     }
 
-    async remove(label: string) {
-
+    async remove(sortId: ObjectId, label: Label): Promise<void> {
+        // system remove(label: String)
+        //     label in labelIDs
+        //     label.weights := none
+        //     labelIDs -= label
+        const sort = await this.sorts.readOne(sortId)
+        if (sort == null) {
+            throw new SortNotFoundError(sortId)
+        }
+        if (!sort.weights.has(label)) {
+            throw new LabelNotAllowedError(label)
+        }
+        sort.weights.delete(label)
+        await this.sorts.partialUpdateOne(sortId, { weights: sort.weights })
     }
 
-    async set(label: string, weight: number) {
-
+    async set(sortId: ObjectId, label: Label, weight: number): Promise<void> {
+        // system set(label: String, w: float)
+        //     label in labelIDs
+        //     label.weights := w
+        const sort = await this.sorts.readOne(sortId)
+        if (sort == null) {
+            throw new SortNotFoundError(sortId)
+        }
+        if (!sort.weights.has(label)) {
+            throw new LabelNotAllowedError(label)
+        }
+        await this.sorts.partialUpdateOne(sortId, { weights: sort.weights.set(label, weight) })
     }
 
-    async get(label: string) {
-        return 0;
+    async get(sortId: ObjectId, label: Label): Promise<number> {
+        // system get(label: String, out w: float)
+        //     label in labelIDs
+        //     w := label.weights
+        const sort = await this.sorts.readOne(sortId)
+        if (sort == null) {
+            throw new SortNotFoundError(sortId)
+        }
+        const result = sort.weights.get(label)
+        if (result == undefined) {
+            throw new LabelNotAllowedError(label)
+        }
+        return result
+    }
+
+    private static Sort(sort: SortDoc, feed: Set<ObjectId>): Array<ObjectId> {
+        throw new NotImplementedError()
     }
 }
 
-export class FeedNotFoundError extends NotFoundError {
+export class SortNotFoundError extends NotFoundError {
     constructor(
-        public readonly feed: ObjectId,
-        public readonly _id: ObjectId,
+        public readonly sort: ObjectId,
     ) {
-        super("{0} feed of ID {1} not found!", feed, _id);
+        super("{0}: Sort of ID {1} not found!", NotFoundError.HTTP_CODE, sort);
+    }
+}
+
+export class SortNotAllowedError extends NotAllowedError {
+    constructor(
+        public readonly sort: ObjectId,
+    ) {
+        super("{0}: Sort of ID {1} is not allowed!", NotAllowedError.HTTP_CODE, sort);
     }
 }
 
 export class LabelNotFoundError extends NotFoundError {
     constructor(
-        public readonly label: ObjectId,
+        public readonly label: Label,
     ) {
-        super("label \"{0}\" not found!", label);
+        super("{0}: Label \"{1}\" not found!", NotFoundError.HTTP_CODE, label);
+    }
+}
+
+export class LabelNotAllowedError extends NotAllowedError {
+    constructor(
+        public readonly label: Label,
+    ) {
+        super("{0}: Label \"{1}\" not allowed!", NotAllowedError.HTTP_CODE, label);
     }
 }

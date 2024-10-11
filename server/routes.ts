@@ -2,10 +2,12 @@ import { ObjectId } from "mongodb";
 
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Authing, Friending, Posting, Sessioning } from "./app";
+import { Authing, Friending, Labelling, Posting, Sessioning, Sorting, Sourcing } from "./app";
 import { PostOptions } from "./concepts/posting";
 import { SessionDoc } from "./concepts/sessioning";
 import Responses from "./responses";
+
+import { Label, SourceTarget } from "./concepts/types";
 
 import { z } from "zod";
 
@@ -165,23 +167,19 @@ class Routes {
    * Sourcing
    */
 
-  @Router.put("/source/register/:target")
-  async registerSource(session: SessionDoc, target: string) {
+  @Router.post("/source/:target")
+  async addSource(session: SessionDoc, uri: string, target: SourceTarget): Promise<ObjectId> {
+    const user = Sessioning.getUser(session);
+    return await Sourcing.register(target, uri, user)
+  }
+
+  @Router.get("/source/:sourceId")
+  async getSourceContent(session: SessionDoc, sourceId: ObjectId) {
 
   }
 
-  @Router.put("/source/unregister/:id")
-  async unregisterSource(session: SessionDoc, id: string) {
-
-  }
-
-  @Router.put("/source/lookup/:id")
-  async lookupSource(session: SessionDoc, id: string) {
-
-  }
-
-  @Router.put("/source/get/:id")
-  async GetSource(session: SessionDoc, id: string) {
+  @Router.delete("/source/:sourceId")
+  async removeSource(session: SessionDoc, sourceId: ObjectId) {
 
   }
 
@@ -189,33 +187,19 @@ class Routes {
    * Labelling
    */
 
-  @Router.put("/label/register/:label")
-  async registerLabel(session: SessionDoc, label: string) {
+  @Router.post("/label/:label/:weight")
+  async newLabel(session: SessionDoc, label: Label, weight: number) {
+    const labelId = Labelling.register(label)
+    Sorting.add()
+  }
+
+  @Router.put("/label/:label/:weight")
+  async setLabel(session: SessionDoc, label: string, weight: number) {
 
   }
 
-  @Router.put("/label/unregister/:label")
-  async unregisterLabel(session: SessionDoc, label: string) {
-
-  }
-
-  @Router.put("/label/lookup/:label")
-  async lookupLabel(session: SessionDoc, label: string) {
-
-  }
-
-  @Router.put("/label/:label/add/:id")
-  async addLabel(session: SessionDoc, label: string, id: string) {
-
-  }
-
-  @Router.put("/label/:label/remove/:id")
-  async removeLabel(session: SessionDoc, label: string, id: string) {
-
-  }
-
-  @Router.put("/label/get/:id")
-  async getResourceLabel(session: SessionDoc, id: string) {
+  @Router.put("/label/:label/:postID")
+  async addLabel(session: SessionDoc, label: string, postID: string) {
 
   }
 
@@ -223,10 +207,14 @@ class Routes {
    * Templating
    */
 
-  @Router.put("/template/add/:id")
-  async addTemplate(session: SessionDoc, id: string) {
+  @Router.put("/template/:targets")
+  async addTemplate(session: SessionDoc, targets: SourceTarget[]) {
 
   }
+
+  /*****
+   * Sorting
+   */
 
   @Router.put("/template/remove/:id")
   async removeTemplate(session: SessionDoc, id: string) {

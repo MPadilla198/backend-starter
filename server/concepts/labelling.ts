@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
 import { NotAllowedError, NotFoundError } from "./errors";
+import { Label } from "./types";
 
 
 export interface LabelingOptions {
@@ -8,7 +9,7 @@ export interface LabelingOptions {
 }
 
 export interface LabelDoc extends BaseDoc {
-    label: string;
+    label: Label;
     resources: Set<ObjectId>;
 }
 
@@ -25,16 +26,16 @@ export default class LabellingConcept {
         this.labels = new DocCollection<LabelDoc>(collectionName);
     }
 
-    async register(label: string) {
+    async register(label: Label): Promise<ObjectId> {
         // l not in labels
         // labels += l
         // l.resources := {}
         this.assertLabelDoesNotExist(label);
 
-        return await this.labels.createOne({ label });
+        return await this.labels.createOne({ label: label, resources: new Set<ObjectId>() });
     }
 
-    async unregister(label: string) {
+    async unregister(label: Label): Promise<void> {
         // l in labels
         // l.resources := none
         // labels -= l
@@ -43,7 +44,7 @@ export default class LabellingConcept {
         void await this.labels.deleteOne({ label });
     }
 
-    async lookup(label: string) {
+    async lookup(label: Label): Promise<LabelDoc> {
         // l in labels
         // r := l.resources
         const result = await this.labels.readOne({ label });
@@ -54,7 +55,7 @@ export default class LabellingConcept {
         return result;
     }
 
-    async add(resource: ObjectId, label: string) {
+    async add(resource: ObjectId, label: Label): Promise<void> {
         // l in labels
         // r not in l.resources
         // l.resources += r
@@ -66,7 +67,7 @@ export default class LabellingConcept {
         _label?.resources.add(resource);
     }
 
-    async remove(resource: ObjectId, label: string) {
+    async remove(resource: ObjectId, label: Label): Promise<void> {
         // l in labels
         // r in l.resources
         // l.resources -= r
@@ -78,15 +79,15 @@ export default class LabellingConcept {
         _label?.resources.delete(resource);
     }
 
-    async get(resource: ObjectId) {
+    async get(resource: ObjectId): Promise<Set<Label>> {
         // r in labelled
         // l := r.labelled
-        let result: string[] = [];
+        let result: Set<Label> = new Set<Label>();
 
         const labels = await this.labels.readMany({});
         labels.forEach((element) => {
             if (element.resources.has(resource)) {
-                result.push(element.label);
+                result.add(element.label);
             }
         });
 
