@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Authing, Friending, Labelling, Posting, Sessioning, Sorting, Sourcing } from "./app";
+import { Authing, Friending, Labelling, Sessioning, Sorting, Sourcing } from "./app";
 import { PostOptions } from "./concepts/posting";
 import { SessionDoc } from "./concepts/sessioning";
 import Responses from "./responses";
@@ -79,14 +79,14 @@ class Routes {
   @Router.get("/posts")
   @Router.validate(z.object({ author: z.string().optional() }))
   async getPosts(author?: string) {
-    let posts;
-    if (author) {
-      const id = (await Authing.getUserByUsername(author))._id;
-      posts = await Posting.getByAuthor(id);
-    } else {
-      posts = await Posting.getPosts();
-    }
-    // return Responses.posts(posts);
+    // let posts;
+    // if (author) {
+    //   const id = (await Authing.getUserByUsername(author))._id;
+    //   posts = await Posting.getByAuthor(id);
+    // } else {
+    //   posts = await Posting.getPosts();
+    // }
+    // // return Responses.posts(posts);
   }
 
   @Router.post("/posts")
@@ -98,18 +98,18 @@ class Routes {
 
   @Router.patch("/posts/:id")
   async updatePost(session: SessionDoc, id: string, content?: string, options?: PostOptions) {
-    const user = Sessioning.getUser(session);
-    const oid = new ObjectId(id);
-    await Posting.assertAuthorIsUser(oid, user);
-    return await Posting.update(oid, content, options);
+    // const user = Sessioning.getUser(session);
+    // const oid = new ObjectId(id);
+    // await Posting.assertAuthorIsUser(oid, user);
+    // return await Posting.update(oid, content, options);
   }
 
   @Router.delete("/posts/:id")
   async deletePost(session: SessionDoc, id: string) {
-    const user = Sessioning.getUser(session);
-    const oid = new ObjectId(id);
-    await Posting.assertAuthorIsUser(oid, user);
-    // return Posting.delete(oid);
+    // const user = Sessioning.getUser(session);
+    // const oid = new ObjectId(id);
+    // await Posting.assertAuthorIsUser(oid, user);
+    // // return Posting.delete(oid);
   }
 
   /*****
@@ -175,12 +175,14 @@ class Routes {
 
   @Router.get("/source/:sourceId")
   async getSourceContent(session: SessionDoc, sourceId: ObjectId) {
-
+    const user = Sessioning.getUser(session);
+    return await Sourcing.lookup(sourceId, user);
   }
 
   @Router.delete("/source/:sourceId")
   async removeSource(session: SessionDoc, sourceId: ObjectId) {
-
+    const user = Sessioning.getUser(session);
+    return await Sourcing.unregister(sourceId, user);
   }
 
   /*****
@@ -188,19 +190,33 @@ class Routes {
    */
 
   @Router.post("/label/:label/:weight")
+  @Router.validate(z.object({ label: z.string(), weight: z.number() }))
   async newLabel(session: SessionDoc, label: Label, weight: number) {
-    const labelId = Labelling.register(label)
-    Sorting.add()
+    const user = Sessioning.getUser(session);
+    const labelId = await Labelling.register(label, user);
+    return await Sorting.add(labelId, label, weight, user);
   }
 
   @Router.put("/label/:label/:weight")
-  async setLabel(session: SessionDoc, label: string, weight: number) {
-
+  @Router.validate(z.object({ label: z.string(), weight: z.number() }))
+  async setLabel(session: SessionDoc, label: Label, weight: number) {
+    const user = Sessioning.getUser(session);
+    const labelId = await Labelling.lookup(label, user);
+    return await Sorting.set(labelId._id, label, weight, user);
   }
 
-  @Router.put("/label/:label/:postID")
-  async addLabel(session: SessionDoc, label: string, postID: string) {
+  // @Router.delete("/label/:label")
+  // @Router.validate(z.object({ label: z.string() }))
+  // async deleteLabel(session: SessionDoc, label: Label) {
+  //   const user = Sessioning.getUser(session);
+  //   const la
+  // }
 
+  @Router.put("/label/:label/:postID")
+  @Router.validate(z.object({ label: z.string() }))
+  async addLabel(session: SessionDoc, label: string, postID: ObjectId) {
+    const user = Sessioning.getUser(session);
+    return await Labelling.add(postID, label, user);
   }
 
   /*****

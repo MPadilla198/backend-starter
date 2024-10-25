@@ -16,6 +16,7 @@ export interface TemplatingOptions {
 }
 
 export interface TemplateDoc extends BaseDoc {
+    user: ObjectId;
     type: TemplateType;
     resources: Set<ResourceType>;
     template: any;
@@ -23,6 +24,7 @@ export interface TemplateDoc extends BaseDoc {
 }
 
 export interface RenderDoc extends BaseDoc {
+    user: ObjectId;
     template: ObjectId;
     data: Map<string, ObjectId>;
 }
@@ -42,21 +44,23 @@ export default class TemplatingConcept {
         this.renders = new DocCollection<RenderDoc>(collectionName);
     }
 
-    async add(template: any, type: TemplateType, resources: Set<ResourceType>): Promise<ObjectId> {
+    async add(template: any, type: TemplateType, resources: Set<ResourceType>, user: ObjectId): Promise<ObjectId> {
         // id not in templateIDs
         // templateIDs += id
         // id.templates := t
-        const _id = await this.templates.createOne({ type, resources, template });
+        const _id = await this.templates.createOne({ user, type, resources, template });
         return _id;
     }
 
-    async remove(template: ObjectId): Promise<void> {
+    async remove(template: ObjectId, user: ObjectId): Promise<void> {
         // id in templateIDs
         // id.templates := none
         // templateIDs -= id
         const request = await this.templates.readOne(template);
         if (request == null) {
             throw new TemplateNotFoundError(template);
+        } else if (!request.user.equals(user)) {
+            throw new TemplateNotAllowedError(template);
         }
         await this.templates.deleteOne(template);
     }
@@ -92,6 +96,14 @@ export default class TemplatingConcept {
     }
 }
 
+export class TemplateNotAllowedError extends NotAllowedError {
+    constructor(
+        public readonly _id: ObjectId,
+    ) {
+        super("{0}: Template of ID {1} not allowed!", NotAllowedError.HTTP_CODE, _id);
+    }
+}
+
 export class TemplateNotFoundError extends NotFoundError {
     constructor(
         public readonly _id: ObjectId,
@@ -104,7 +116,7 @@ export class RenderNotAllowedError extends NotAllowedError {
     constructor(
         public readonly _id: ObjectId,
     ) {
-        super("{0}: Render of ID {1} is not allowed!", NotFoundError.HTTP_CODE, _id);
+        super("{0}: Render of ID {1} is not allowed!", NotAllowedError.HTTP_CODE, _id);
     }
 }
 

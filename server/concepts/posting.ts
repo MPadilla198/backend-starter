@@ -56,9 +56,6 @@ export default class PostingConcept {
   }
 
   async post(feedId: ObjectId, author: ObjectId, content: ObjectId, options?: PostOptions): Promise<void> {
-    // const _id = await this.posts.createOne({ author, content, options });
-    // return { msg: "Post successfully created!", post: await this.posts.readOne({ _id }) };
-
     // fID in feedIDs
     // rID not in fID.feed
     // fID.feed += rID
@@ -70,9 +67,6 @@ export default class PostingConcept {
   }
 
   async unpost(feedId: ObjectId, postId: ObjectId) {
-    // await this.posts.deleteOne({ _id });
-    // return { msg: "Post deleted successfully!" };
-
     // unpost(fID: String, rID: String)
     //   fID in feedIDs
     //   rID in fID.feed
@@ -89,8 +83,6 @@ export default class PostingConcept {
   }
 
   async get(feedId: ObjectId): Promise<Set<PostDoc>> {
-    // return await this.posts.readMany({ author });
-
     // get(id: String, out f: set String)
     //   id in feedIDs
     //   f := id.feed

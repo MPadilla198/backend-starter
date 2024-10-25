@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
-import { NotAllowedError, NotFoundError, NotImplementedError } from "./errors";
+import { LabelNotAllowedError, LabelNotFoundError, NotAllowedError, NotFoundError, NotImplementedError } from "./errors";
 import { Label } from "./types";
 
 export interface SortingOptions {
@@ -8,6 +8,7 @@ export interface SortingOptions {
 }
 
 export interface SortDoc extends BaseDoc {
+    user: ObjectId;
     weights: Map<Label, number>;
     options?: SortingOptions;
 }
@@ -33,7 +34,7 @@ export default class SortingConcept {
         return SortingConcept.Sort(sort, feed)
     }
 
-    async add(sortId: ObjectId, label: Label, weight: number): Promise<void> {
+    async add(sortId: ObjectId, label: Label, weight: number, user: ObjectId): Promise<void> {
         // system add(label: String, w: float)
         //     label not in labelIDs
         //     labelIDs += label
@@ -45,7 +46,7 @@ export default class SortingConcept {
         if (sort.weights.has(label)) {
             throw new LabelNotAllowedError(label)
         }
-        await this.sorts.partialUpdateOne(sortId, { weights: sort.weights.set(label, weight) })
+        await this.sorts.partialUpdateOne(sortId, { user: user, weights: sort.weights.set(label, weight) })
     }
 
     async remove(sortId: ObjectId, label: Label): Promise<void> {
@@ -58,13 +59,13 @@ export default class SortingConcept {
             throw new SortNotFoundError(sortId)
         }
         if (!sort.weights.has(label)) {
-            throw new LabelNotAllowedError(label)
+            throw new LabelNotFoundError(label)
         }
         sort.weights.delete(label)
         await this.sorts.partialUpdateOne(sortId, { weights: sort.weights })
     }
 
-    async set(sortId: ObjectId, label: Label, weight: number): Promise<void> {
+    async set(sortId: ObjectId, label: Label, weight: number, user: ObjectId): Promise<void> {
         // system set(label: String, w: float)
         //     label in labelIDs
         //     label.weights := w
@@ -114,18 +115,3 @@ export class SortNotAllowedError extends NotAllowedError {
     }
 }
 
-export class LabelNotFoundError extends NotFoundError {
-    constructor(
-        public readonly label: Label,
-    ) {
-        super("{0}: Label \"{1}\" not found!", NotFoundError.HTTP_CODE, label);
-    }
-}
-
-export class LabelNotAllowedError extends NotAllowedError {
-    constructor(
-        public readonly label: Label,
-    ) {
-        super("{0}: Label \"{1}\" not allowed!", NotAllowedError.HTTP_CODE, label);
-    }
-}

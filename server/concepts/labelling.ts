@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
-import { NotAllowedError, NotFoundError } from "./errors";
+import { LabelNotAllowedError, LabelNotFoundError, NotAllowedError, NotFoundError } from "./errors";
 import { Label } from "./types";
 
 
@@ -9,6 +9,7 @@ export interface LabelingOptions {
 }
 
 export interface LabelDoc extends BaseDoc {
+    user: ObjectId;
     label: Label;
     resources: Set<ObjectId>;
 }
@@ -26,28 +27,28 @@ export default class LabellingConcept {
         this.labels = new DocCollection<LabelDoc>(collectionName);
     }
 
-    async register(label: Label): Promise<ObjectId> {
+    async register(label: Label, user: ObjectId): Promise<ObjectId> {
         // l not in labels
         // labels += l
         // l.resources := {}
-        this.assertLabelDoesNotExist(label);
+        this.assertLabelDoesNotExist(label, user);
 
-        return await this.labels.createOne({ label: label, resources: new Set<ObjectId>() });
+        return await this.labels.createOne({ user: user, label: label, resources: new Set<ObjectId>() });
     }
 
-    async unregister(label: Label): Promise<void> {
+    async unregister(label: Label, user: ObjectId): Promise<void> {
         // l in labels
         // l.resources := none
         // labels -= l
         // labels.resources -= l
-        this.assertLabelExists(label);
-        void await this.labels.deleteOne({ label });
+        this.assertLabelExists(label, user);
+        void await this.labels.deleteOne({ label, user });
     }
 
-    async lookup(label: Label): Promise<LabelDoc> {
+    async lookup(label: Label, user: ObjectId): Promise<LabelDoc> {
         // l in labels
         // r := l.resources
-        const result = await this.labels.readOne({ label });
+        const result = await this.labels.readOne({ label, user });
         if (result === null) {
             throw new LabelNotFoundError(label);
         }
@@ -55,27 +56,27 @@ export default class LabellingConcept {
         return result;
     }
 
-    async add(resource: ObjectId, label: Label): Promise<void> {
+    async add(resource: ObjectId, label: Label, user: ObjectId): Promise<void> {
         // l in labels
         // r not in l.resources
         // l.resources += r
         // r.labelled += l
-        await this.assertLabelExists(label);
-        await this.assertResourceDoesNotExist(label, resource);
+        await this.assertLabelExists(label, user);
+        await this.assertResourceDoesNotExist(label, resource, user);
 
-        const _label = await this.labels.readOne({ label });
+        const _label = await this.labels.readOne({ label, user });
         _label?.resources.add(resource);
     }
 
-    async remove(resource: ObjectId, label: Label): Promise<void> {
+    async remove(resource: ObjectId, label: Label, user: ObjectId): Promise<void> {
         // l in labels
         // r in l.resources
         // l.resources -= r
         // r.labelled -= l
-        await this.assertLabelExists(label);
-        await this.assertResourceExists(label, resource);
+        await this.assertLabelExists(label, user);
+        await this.assertResourceExists(label, resource, user);
 
-        const _label = await this.labels.readOne({ label });
+        const _label = await this.labels.readOne({ label, user });
         _label?.resources.delete(resource);
     }
 
@@ -94,48 +95,34 @@ export default class LabellingConcept {
         return result;
     }
 
-    private async assertLabelExists(label: string) {
-        const result = await this.labels.readOne({ label });
+    private async assertLabelExists(label: Label, user: ObjectId) {
+        const result = await this.labels.readOne({ label, user });
         if (result === null) {
             throw new LabelNotFoundError(label);
         }
     }
 
-    private async assertLabelDoesNotExist(label: string) {
-        const result = await this.labels.readOne({ label });
+    private async assertLabelDoesNotExist(label: Label, user: ObjectId) {
+        const result = await this.labels.readOne({ label, user });
         if (result !== null) {
             throw new LabelNotAllowedError(label);
         }
     }
 
-    private async assertResourceExists(label: string, resource: ObjectId) {
-        const result = await this.labels.readOne({ label });
+    private async assertResourceExists(label: Label, resource: ObjectId, user: ObjectId) {
+        await this.assertLabelExists(label, user);
+        const result = await this.labels.readOne({ label, user });
         if (!result?.resources.has(resource)) {
             throw new ResourceNotFoundError(resource);
         }
     }
 
-    private async assertResourceDoesNotExist(label: string, resource: ObjectId) {
-        const result = await this.labels.readOne({ label });
+    private async assertResourceDoesNotExist(label: Label, resource: ObjectId, user: ObjectId) {
+        await this.assertLabelExists(label, user);
+        const result = await this.labels.readOne({ label, user });
         if (result?.resources.has(resource)) {
             throw new ResourceNotAllowedError(resource);
         }
-    }
-}
-
-export class LabelNotAllowedError extends NotAllowedError {
-    constructor(
-        public readonly label: string,
-    ) {
-        super("label with name \"{0}\" is not allowed!", label);
-    }
-}
-
-export class LabelNotFoundError extends NotFoundError {
-    constructor(
-        public readonly label: string,
-    ) {
-        super("label of ID {0} not found!", label);
     }
 }
 

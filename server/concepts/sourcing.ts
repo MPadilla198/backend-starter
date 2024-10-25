@@ -17,6 +17,7 @@ export interface SourceDoc extends BaseDoc {
 }
 
 export interface ContentDoc extends BaseDoc {
+    user: ObjectId;
     contentID: ObjectId;
     data: ObjectId;
 }
@@ -51,36 +52,43 @@ export default class SourcingConcept {
         return source;
     }
 
-    async unregister(sourceID: ObjectId): Promise<void> {
+    async unregister(sourceID: ObjectId, user: ObjectId): Promise<void> {
         // id in sourceIDs
         // sourceIDs -= id
         // id.source := none
         // id.content.data := none
         // id.content := none
-        await this.assertSourceExists(sourceID)
+        const result = await this.sources.readOne(sourceID);
+        if (result == null) {
+            throw new SourceNotFoundError(sourceID);
+        }
+        this.assertUserOwns(result, user);
         await this.sources.deleteOne(sourceID)
     }
 
-    async lookup(sourceID: ObjectId): Promise<SourceDoc> {
+    async lookup(sourceID: ObjectId, user: ObjectId): Promise<SourceDoc> {
         // id in sourceIDs
         // t := id.sources
-        // await this.assertSourceExists(sourceID) // When uncommented, the linter does not recognize the assert
-        const result = await this.sources.readOne(sourceID)
+        await this.assertSourceExists(sourceID); // When uncommented, the linter does not recognize the assert
+        const result = await this.sources.readOne(sourceID);
         if (result == null) {
-            throw new SourceNotAllowedError(sourceID)
+            throw new SourceNotFoundError(sourceID);
         }
-        return result
+
+        this.assertUserOwns(result, user);
+        return result;
     }
 
-    async get(contentID: ObjectId): Promise<ContentDoc> {
+    async get(contentID: ObjectId, user: ObjectId): Promise<ContentDoc> {
         // id in contentIDs
         // t := id.content
 
-        // await this.assertContentExists(contentID) // When uncommented, the linter does not recognize the assert
         const result = await this.content.readOne(contentID)
         if (result == null) {
-            throw new SourceNotAllowedError(contentID)
+            throw new SourceNotFoundError(contentID);
         }
+
+        this.assertUserOwns(result, user);
         return result
     }
 
@@ -99,6 +107,12 @@ export default class SourcingConcept {
 
     private static Get(target: SourceTarget | undefined, uri: string | undefined): Set<ContentDoc> {
         throw new NotImplementedError(); // TODO
+    }
+
+    private async assertUserOwns(source: SourceDoc | ContentDoc, user: ObjectId) {
+        if (!source.user.equals(user)) {
+            throw new SourceNotAllowedError(source._id)
+        }
     }
 
     private async assertSourceExists(filter: Filter<SourceDoc>) {

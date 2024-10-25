@@ -1,4 +1,5 @@
 import { FormattableError } from "../framework/router";
+import { Label } from "./types";
 
 /**
  * Corresponds to an action attempted by a user that contains bad values for parameters.
@@ -41,5 +42,21 @@ export class NotImplementedError extends FormattableError {
 
   constructor() {
     super("{0}: Functionality not yet implemented!", NotImplementedError.HTTP_CODE);
+  }
+}
+
+export class LabelNotFoundError extends NotFoundError {
+  constructor(
+    public readonly label: Label,
+  ) {
+    super("{0}: Label \"{1}\" not found!", NotFoundError.HTTP_CODE, label);
+  }
+}
+
+export class LabelNotAllowedError extends NotAllowedError {
+  constructor(
+    public readonly label: Label,
+  ) {
+    super("{0}: Label \"{1}\" not allowed!", NotAllowedError.HTTP_CODE, label);
   }
 }
